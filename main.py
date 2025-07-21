@@ -596,4 +596,119 @@ INDEX_HTML = """
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            for (con
+            for (const place of places) {
+                const [x, y] = positions[place];
+                if (dist(clickX, clickY, x, y) <= 15) {
+                    showNodeInfo(place);
+                    return;
+                }
+            }
+        });
+
+        function showNodeInfo(place) {
+            const imgEl = document.getElementById("node-image");
+            const textEl = document.getElementById("route-text");
+
+            // Remove existing classes
+            imgEl.classList.remove('show');
+
+            // Set new content
+            imgEl.src = images[place];
+            textEl.innerHTML = `📍 <strong>${place}</strong><br>Click to explore this location!`;
+
+            // Show image with animation
+            imgEl.style.display = "block";
+            setTimeout(() => {
+                imgEl.classList.add('show');
+            }, 100);
+        }
+
+        // Enhanced find route button with loading animation
+        document.getElementById("find-route-btn").addEventListener("click", () => {
+            const src = document.getElementById("source").value;
+            const dst = document.getElementById("dest").value;
+            const textEl = document.getElementById("route-text");
+            const imgEl = document.getElementById("node-image");
+            const button = document.getElementById("find-route-btn");
+
+            imgEl.style.display = "none";
+
+            if (!src || !dst) {
+                textEl.innerHTML = "⚠️ Please select both source and destination!";
+                textEl.style.color = "#ff6b6b";
+                setTimeout(() => textEl.style.color = "#333", 2000);
+                return;
+            }
+
+            if (src === dst) {
+                textEl.innerHTML = "⚠️ Source and destination are the same!";
+                textEl.style.color = "#ff6b6b";
+                setTimeout(() => textEl.style.color = "#333", 2000);
+                return;
+            }
+
+            // Show loading
+            button.innerHTML = '<span class="loading"></span> Calculating...';
+            button.disabled = true;
+
+            setTimeout(() => {
+                drawMap();
+                const result = dijkstra(src, dst);
+
+                if(result.distance === Infinity) {
+                    textEl.innerHTML = "❌ No path found between these locations!";
+                    textEl.style.color = "#ff6b6b";
+                } else {
+                    animateRoute(result.path);
+
+                    textEl.innerHTML = `
+                        🎯 <strong>Optimal Route Found!</strong><br>
+                        📍 <strong>Path:</strong> ${result.path.join(" → ")}<br>
+                        📏 <strong>Distance:</strong> ${Math.round(result.distance)} units<br>
+                        ⏱️ <strong>Est. Walking Time:</strong> ${Math.round(result.distance / 3)} minutes<br>
+                        🧠 <em>Calculated using Dijkstra's Algorithm</em>
+                    `;
+                    textEl.style.color = "#333";
+
+                    // Add pulse effect to info box
+                    document.getElementById("info").classList.add("pulse");
+                    setTimeout(() => {
+                        document.getElementById("info").classList.remove("pulse");
+                    }, 2000);
+                }
+
+                // Reset button
+                button.innerHTML = "🚀 Find Route";
+                button.disabled = false;
+            }, 1000);
+        });
+
+        // Initialize
+        createParticles();
+        animate();
+
+        // Add some interactivity to selects
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', function() {
+                this.classList.add('glow');
+                setTimeout(() => this.classList.remove('glow'), 1000);
+            });
+        });
+
+    </script>
+</body>
+</html>
+"""
+
+
+@app.route("/")
+def index():
+    return render_template_string(INDEX_HTML,
+                                  places=places,
+                                  positions=positions,
+                                  connections=connections,
+                                  images=images)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
